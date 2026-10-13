@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#032167">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Social OS">
+<meta name="description" content="LE STUDIO Social OS — gestión de marcas, contenido, plan y facturación">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/icon-192.png" type="image/png">
+<link rel="stylesheet" href="/styles.css?v=261">
+<title>LE STUDIO — Social OS</title>
+</head>
+<body>
+<div id="loader" aria-live="polite"><img src="/logo-le-studio.png" alt="LE STUDIO" width="120"><span>Cargando…</span></div>
+
+<div id="auth" class="auth hidden">
+  <div class="auth-brand">
+    <img src="/logo-le-studio-white.png" alt="LE STUDIO">
+    <div><h1>Las mejores ideas necesitan un lugar donde crecer.</h1><p>LE STUDIO · SOCIAL OS</p></div>
+  </div>
+  <div class="auth-side">
+    <div class="login-wrap">
+      <form class="login-box" id="login-form">
+        <div class="eyebrow">Acceso privado</div>
+        <h2>Bienvenido de nuevo.</h2>
+        <p class="sub">Gestiona marcas, ideas y contenido desde un mismo lugar.</p>
+        <label class="label">Correo electrónico<input name="email" type="email" class="input" autocomplete="username" inputmode="email" autocapitalize="none" required placeholder="tu@empresa.com"></label>
+        <label class="label">Contraseña
+          <span class="pass"><input name="password" type="password" class="input" autocomplete="current-password" required minlength="8" placeholder="Tu contraseña"><button type="button" class="muted-btn" data-act="toggle-pass">Mostrar</button></span>
+        </label>
+        <button type="submit" class="primary full" style="margin-top:22px">Iniciar sesión</button>
+        <div id="login-msg" role="alert"></div>
+        <p class="sub" style="margin-top:18px"><button type="button" class="link-btn" data-act="forgot">He olvidado mi contraseña</button></p>
+        <p class="sub">Solo para usuarios autorizados por LE STUDIO.</p>
+      </form>
+
+      <form class="login-box hidden" id="forgot-form">
+        <div class="eyebrow">Recuperar acceso</div>
+        <h2>¿Olvidaste tu contraseña?</h2>
+        <p class="sub">Escribe tu correo y te enviaremos un enlace para elegir una nueva.</p>
+        <label class="label">Correo electrónico<input name="email" type="email" class="input" autocomplete="username" required placeholder="tu@empresa.com"></label>
+        <button type="submit" class="primary full" style="margin-top:22px">Enviar enlace</button>
+        <div id="forgot-msg" role="status"></div>
+        <p class="sub" style="margin-top:18px"><button type="button" class="link-btn" data-act="back-login">← Volver a iniciar sesión</button></p>
+      </form>
+
+      <form class="login-box hidden" id="setup-form">
+        <div class="eyebrow">Invitación</div>
+        <h2>Crea tu contraseña</h2>
+        <p class="sub">Elige una contraseña única de al menos 8 caracteres.</p>
+        <label class="label">Contraseña nueva<input class="input" name="password" type="password" minlength="8" autocomplete="new-password" required></label>
+        <label class="label">Repite la contraseña<input class="input" name="password2" type="password" minlength="8" autocomplete="new-password" required></label>
+        <button class="primary full" type="submit" style="margin-top:22px">Activar mi cuenta</button>
+        <p id="setup-error" class="form-error" role="alert"></p>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="shell hidden">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand-row"><img src="/logo-le-studio.png" alt="LE STUDIO" height="34"><small>SOCIAL OS</small></div>
+    <nav class="nav" id="nav" aria-label="Principal"></nav>
+    <div class="sidebar-bottom"><div id="current-user"></div><button class="muted-btn" data-act="logout">Cerrar sesión</button></div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <span class="top-title" id="top-title">Inicio</span>
+      <div class="actions"><button class="icon-btn" data-act="search" aria-label="Buscar (Ctrl/Cmd+K)" title="Buscar (Ctrl/Cmd+K)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button><button class="icon-btn" id="theme-btn" data-act="theme" aria-label="Cambiar tema"></button><select class="input compact" id="global-brand" aria-label="Filtrar por marca"></select><span class="pill hidden" id="active-brand-tag">LE STUDIO</span></div>
+    </header>
+    <main class="wrap" id="view" tabindex="-1"></main>
+  </div>
+</div>
+
+<nav class="tabbar hidden" id="tabbar" aria-label="Navegación móvil"></nav>
+<div id="net-banner" class="net-banner hidden" role="status">Sin conexión. Los cambios no se guardarán hasta que vuelva internet.</div>
+<div id="modal-root"></div>
+<div id="confirm-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+<script type="module" src="/app.js?v=261"></script>
+</body>
+</html>
