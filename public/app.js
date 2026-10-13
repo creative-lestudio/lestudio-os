@@ -1,8 +1,8 @@
 // ============================================================================
-// LE STUDIO · Social OS  v2.6.1
+// LE STUDIO · Social OS  v2.7.0
 // Un solo fichero, sin dependencias. Supabase (Auth + PostgREST + Storage).
 // ============================================================================
-const VERSION = '2.6.1';
+const VERSION = '2.7.0';
 const SUPABASE_URL = 'https://nmoxldfgnugoeyawlzhr.supabase.co';
 const ANON_KEY = 'sb_publishable_cvbOwwc3rhoh0Ye77lz8Lw_h9UgqEVx';
 const SKEY = 'ls-social-session-v25';
@@ -623,22 +623,148 @@ function approvalsBlock(items, onlyPending = false) {
 const viewApprovals = () => head('Aprobaciones', 'Propuestas pendientes de respuesta del cliente.') + approvalsBlock(state.approvals.filter(a => { const c = state.content.find(x => x.id === a.content_id); return c && (state.brand === 'all' || c.brand_id === state.brand); }));
 
 // ---------- calendario ----------
+// El cliente ve un calendario de solo lectura. El admin ve el planificador: bandeja «Sin fecha»
+// + referencias, arrastrar y soltar (ratón o mantener pulsado en el móvil) y alta rápida por día.
 function calendarView(items) {
+  const admin = isAdmin();
   const d = state.month, y = d.getFullYear(), m = d.getMonth(), start = (new Date(y, m, 1).getDay() + 6) % 7, count = new Date(y, m + 1, 0).getDate(), today = localISO();
   const byDay = {};
   items.forEach(x => { if (x.scheduled_at) (byDay[localDay(x.scheduled_at)] ||= []).push(x); });
   let cells = ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(x => `<div class="day-head">${x}</div>`).join('');
   for (let i = 0; i < start; i++) cells += '<div class="day blank"></div>';
-  const monthEvents = [];
+  const monthEvents = [], max = admin ? 4 : 3;
   for (let day = 1; day <= count; day++) {
     const date = `${y}-${pad(m + 1)}-${pad(day)}`, ev = (byDay[date] || []).sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
     ev.forEach(e => monthEvents.push(e));
-    cells += `<div class="day ${date === today ? 'today' : ''} ${ev.length ? 'has' : ''}"><span>${day}</span>${ev.slice(0, 3).map(e => `<button class="event" data-act="open-content" data-id="${esc(e.id)}">${esc(e.title)}</button>`).join('')}${ev.length > 3 ? `<small class="more">+${ev.length - 3}</small>` : ''}${ev.length ? `<i class="dots">${ev.slice(0, 3).map(() => '<b></b>').join('')}</i>` : ''}</div>`;
+    const evBtn = e => admin
+      ? `<button class="event ${e.status === 'idea' ? 'tentative' : ''}" style="--b:${colorSafe(brandById(e.brand_id)?.primary_color)}" data-act="open-content" data-id="${esc(e.id)}" data-drag="content" data-title="${esc(e.title)}">${esc(e.title)}</button>`
+      : `<button class="event" data-act="open-content" data-id="${esc(e.id)}">${esc(e.title)}</button>`;
+    const more = ev.length > max ? (admin ? `<button class="more" data-act="cal-more" data-date="${date}">+${ev.length - max} más</button>` : `<small class="more">+${ev.length - max}</small>`) : '';
+    cells += `<div class="day ${date === today ? 'today' : ''} ${ev.length ? 'has' : ''}" ${admin ? `data-act="cal-day" data-date="${date}" data-drop="${date}"` : ''}><span>${day}</span>${ev.slice(0, max).map(evBtn).join('')}${more}${ev.length ? `<i class="dots">${ev.slice(0, 3).map(() => '<b></b>').join('')}</i>` : ''}</div>`;
   }
   const label = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(d);
-  return `<div class="toolbar cal-bar"><button class="secondary" data-act="month" data-id="-1" aria-label="Mes anterior">←</button><b class="cal-title">${esc(label)}</b><div class="actions"><button class="muted-btn" data-act="month" data-id="0">Hoy</button><button class="secondary" data-act="month" data-id="1" aria-label="Mes siguiente">→</button></div></div><div class="calendar">${cells}</div>`
-    + `<h3 class="section-title" style="margin:22px 0 10px">Este mes</h3><div class="list agenda">${monthEvents.map(e => rowBtn(`data-act="open-content" data-id="${esc(e.id)}"`, `<span class="date-chip"><b>${new Date(e.scheduled_at).getDate()}</b><small>${new Date(e.scheduled_at).toLocaleDateString('es-ES', { weekday: 'short' })}</small></span><span class="grow"><b>${esc(e.title)}</b><small>${esc(nameBrand(e.brand_id))} · ${esc(new Date(e.scheduled_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }))} · ${esc(lbl(e.platform))}</small></span>${sPill(e.status)}`)).join('') || empty('Nada planificado este mes.')}</div><p class="footnote">Solo representa fechas planificadas. No publica en las redes sociales.</p>`;
+  const bar = `<div class="toolbar cal-bar"><button class="secondary" data-act="month" data-id="-1" aria-label="Mes anterior">←</button><b class="cal-title">${esc(label)}</b><div class="actions"><button class="muted-btn" data-act="month" data-id="0">Hoy</button><button class="secondary" data-act="month" data-id="1" aria-label="Mes siguiente">→</button>${admin ? '<button class="primary" data-act="cal-add" data-date="">+ Idea</button>' : ''}</div></div>`;
+  const grid = `<div class="calendar">${cells}</div>`;
+  const agenda = `<h3 class="section-title" style="margin:22px 0 10px">Este mes</h3><div class="list agenda">${monthEvents.map(e => rowBtn(`data-act="open-content" data-id="${esc(e.id)}"`, `<span class="date-chip"><b>${new Date(e.scheduled_at).getDate()}</b><small>${new Date(e.scheduled_at).toLocaleDateString('es-ES', { weekday: 'short' })}</small></span><span class="grow"><b>${esc(e.title)}</b><small>${esc(nameBrand(e.brand_id))} · ${esc(new Date(e.scheduled_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }))} · ${esc(lbl(e.platform))}</small></span>${sPill(e.status)}`)).join('') || empty('Nada planificado este mes.')}</div><p class="footnote">Solo representa fechas planificadas. No publica en las redes sociales.</p>`;
+  if (!admin) return bar + grid + agenda;
+  const legend = '<div class="cal-legend"><span><i></i>En marcha</span><span><i class="dashed"></i>Idea tentativa</span><span>Ideas y contenido en producción no los ve el cliente.</span></div>';
+  return bar + `<div class="planner"><div class="planner-main">${grid}${legend}</div>${plannerTray(items)}</div>` + agenda;
 }
+function plannerTray(items) {
+  const loose = items.filter(x => !x.scheduled_at && x.status !== 'published');
+  const refs = byBrand(state.refs), multi = state.brand === 'all';
+  const card = (kind, x, img) => `<button class="tray-item" data-act="${kind === 'ref' ? 'ref-plan' : 'open-content'}" data-id="${esc(x.id)}" data-drag="${kind}" data-title="${esc(x.title)}">${img ? `<img src="${esc(safeUrl(img))}" alt="" draggable="false" loading="lazy" referrerpolicy="no-referrer">` : `<i class="tray-ico">${ic(kind === 'ref' ? 'image' : 'content', 16)}</i>`}<span><b>${esc(x.title)}</b><small>${esc((multi ? nameBrand(x.brand_id) + ' · ' : '') + lbl(x.content_type))}</small></span></button>`;
+  return `<aside class="tray" aria-label="Bandeja de planificación"><section class="tray-sec" data-drop=""><h4>Sin fecha <span>${loose.length}</span></h4><div class="tray-list">${loose.map(x => card('content', x, x.media_url)).join('') || '<p class="tray-empty">Suelta aquí una publicación para quitarle la fecha.</p>'}</div></section>`
+    + `<section class="tray-sec"><h4>Referencias <span>${refs.length}</span></h4><div class="tray-list">${refs.map(r => card('ref', r, r.image_url)).join('') || '<p class="tray-empty">Guarda referencias en la Biblioteca y aparecerán aquí.</p>'}</div></section>`
+    + '<p class="tray-hint">Arrastra al día que quieras (en el móvil, mantén pulsado y arrastra). Toca para editar o programar.</p></aside>';
+}
+
+// ---------- planificador: alta rápida, desde referencia, mover ----------
+const FORMATS = ['post', 'reel', 'story', 'carousel', 'video', 'other'];
+const PLATFORMS = ['instagram', 'facebook', 'tiktok', 'linkedin', 'pinterest', 'other'];
+const platformOf = s => { const v = String(s || '').trim().toLowerCase(); return PLATFORMS.includes(v) ? v : v ? 'other' : 'instagram'; };
+const atLocal = (date, time = '10:00') => new Date(`${date}T${time}`).toISOString();
+const timeOf = s => (s ? new Date(s).toTimeString().slice(0, 5) : '10:00');
+const refById = id => state.refs.find(r => r.id === id);
+const refBox = r => `<div class="ref-preview full-col">${r.image_url ? `<img src="${esc(safeUrl(r.image_url))}" alt="" referrerpolicy="no-referrer">` : ''}<div><small class="subtle">Referencia</small><b>${esc(r.title)}</b>${r.reference_url ? `<a target="_blank" rel="noopener noreferrer" href="${esc(safeUrl(r.reference_url))}">Ver referencia ↗</a>` : ''}</div></div>`;
+// reference_id es opcional (sql/08). Si la columna aún no existe, se guarda sin el vínculo.
+async function createContent(row) {
+  try { return await saveEntity('content_items', null, row); }
+  catch (e) { if (row.reference_id && /reference_id/i.test(e.message || '')) { const { reference_id: _, ...rest } = row; return saveEntity('content_items', null, rest); } throw e; }
+}
+const ideaFromRef = (r, date) => ({ brand_id: r.brand_id, title: r.title, content_type: FORMATS.includes(r.content_type) ? r.content_type : 'other', platform: platformOf(r.platform), status: 'idea', scheduled_at: date ? atLocal(date) : null, reference_id: r.id });
+
+function openPlanner({ date = '', refId = '' } = {}) {
+  if (!isAdmin()) return;
+  if (!state.brands.length) { message('Primero debes crear el cliente y su marca.', 'bad'); return; }
+  const r = refId ? refById(refId) : null, brand = r?.brand_id || (state.brand !== 'all' ? state.brand : '');
+  const opt = a => a.map(v => [v, lbl(v)]);
+  const body = (r ? refBox(r) : '')
+    + (brand ? `<input type="hidden" name="brand_id" value="${esc(brand)}">` : sel('brand_id', 'Marca', state.brands.map(b => [b.id, b.name]), '', { full: 1 }))
+    + fld('title', 'Idea / título', r?.title || '', 'text', { req: 1, full: 1, ph: 'Ej.: Reel detrás de cámaras' })
+    + sel('content_type', 'Formato', opt(FORMATS), r?.content_type || 'post') + sel('platform', 'Plataforma', opt(PLATFORMS), platformOf(r?.platform))
+    + fld('date', 'Fecha (opcional)', date, 'date') + fld('time', 'Hora', '10:00', 'time')
+    + sel('status', 'Estado', [['idea', 'Tentativo · idea'], ['production', 'En producción']], 'idea', { full: 1 })
+    + '<p class="subtle full-col" style="margin:0;font-size:12px">Sin fecha, queda en la bandeja «Sin fecha». Después tócala en el calendario para añadir el copy, la pieza o cambiar la fecha.</p>';
+  openModal({
+    title: r ? 'Pasar al calendario' : 'Planificar idea', eyebrow: date ? fmtDay(date) : 'Planificador', submitLabel: date ? 'Añadir al calendario' : 'Guardar idea', body,
+    onSubmit: async fd => {
+      const v = Object.fromEntries(fd);
+      const row = { brand_id: v.brand_id, title: String(v.title).trim(), content_type: v.content_type, platform: v.platform, status: v.status, scheduled_at: v.date ? atLocal(v.date, v.time || '10:00') : null };
+      if (r) row.reference_id = r.id;
+      await createContent(row);
+    }
+  });
+}
+function openDay(date) {
+  const ev = byBrand(state.content).filter(x => x.scheduled_at && localDay(x.scheduled_at) === date).sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+  openModal({
+    title: fmtDay(date), eyebrow: 'Planificación del día',
+    body: `<div class="list">${ev.map(e => rowBtn(`data-act="open-content" data-id="${esc(e.id)}"`, `<span class="grow"><b>${esc(e.title)}</b><small>${esc(nameBrand(e.brand_id))} · ${esc(timeOf(e.scheduled_at))} · ${esc(lbl(e.platform))}</small></span>${sPill(e.status)}`)).join('') || empty('Nada planificado este día.')}</div><div class="modal-actions"><span class="grow"></span><button class="muted-btn" data-act="close-modal">Cerrar</button><button class="primary" data-act="cal-add" data-date="${esc(date)}">+ Añadir aquí</button></div>`
+  });
+}
+// Soltar en un día (date) o en la bandeja (date = '' → sin fecha).
+async function dropOn(kind, id, date) {
+  if (kind === 'ref') {
+    const r = refById(id); if (!r) return;
+    await createContent(ideaFromRef(r, date)); await refreshData();
+    message(date ? `Idea creada el ${fmtDay(date)}. Tócala para completarla.` : 'Idea creada en «Sin fecha».');
+    return;
+  }
+  const post = state.content.find(x => x.id === id); if (!post) return;
+  if ((post.scheduled_at ? localDay(post.scheduled_at) : '') === date) return;
+  const prev = post.scheduled_at, next = date ? atLocal(date, timeOf(prev)) : null;
+  post.scheduled_at = next; render({ keepScroll: true }); // se ve al instante; si falla, se deshace
+  try {
+    const rows = await write('content_items', 'PATCH', { scheduled_at: next }, eq('id', id));
+    if (!Array.isArray(rows) || rows.length !== 1) throw Error('No se pudo mover. Revisa los permisos de Supabase.');
+    message(date ? `«${post.title}» movida al ${fmtDay(date)}.` : `«${post.title}» está ahora en «Sin fecha».`);
+  } catch (e) { post.scheduled_at = prev; render({ keepScroll: true }); throw e; }
+}
+
+// Arrastrar y soltar con Pointer Events: ratón (al mover 6 px) y dedo (mantener pulsado 300 ms).
+let drag = null, noClickUntil = 0;
+function dragStart() {
+  drag.on = true;
+  const g = document.createElement('div'); g.className = 'drag-ghost'; g.textContent = drag.src.dataset.title || drag.src.textContent.trim();
+  document.body.append(g); drag.ghost = g;
+  drag.src.classList.add('drag-src'); document.body.classList.add('dragging');
+  dragMove(drag.x, drag.y);
+  navigator.vibrate?.(12);
+}
+function dragMove(x, y) {
+  drag.ghost.style.transform = `translate(${x + 14}px, ${y + 10}px)`;
+  const t = document.elementFromPoint(x, y)?.closest('[data-drop]') || null;
+  if (t !== drag.over) { drag.over?.classList.remove('drop-over'); t?.classList.add('drop-over'); drag.over = t; }
+  if (y < 70) scrollBy(0, -14); else if (y > innerHeight - 70) scrollBy(0, 14);
+}
+function dragEnd(commit) {
+  const d = drag; drag = null;
+  if (!d) return;
+  clearTimeout(d.timer);
+  if (!d.on) return;
+  d.ghost.remove(); d.src.classList.remove('drag-src'); document.body.classList.remove('dragging'); d.over?.classList.remove('drop-over');
+  noClickUntil = Date.now() + 300;
+  if (commit && d.over) dropOn(d.kind, d.id, d.over.dataset.drop).catch(e => message(friendly(e), 'bad'));
+}
+document.addEventListener('pointerdown', e => {
+  const src = e.target.closest('[data-drag]');
+  if (!src || e.button > 0 || !isAdmin()) return;
+  drag = { src, kind: src.dataset.drag, id: src.dataset.id, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, on: false, touch: e.pointerType !== 'mouse' };
+  if (drag.touch) drag.timer = setTimeout(() => { if (drag && !drag.on) dragStart(); }, 300);
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  drag.x = e.clientX; drag.y = e.clientY;
+  if (drag.on) { dragMove(e.clientX, e.clientY); return; }
+  const dist = Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0);
+  if (drag.touch) { if (dist > 10) dragEnd(false); } else if (dist > 6) dragStart();
+});
+document.addEventListener('pointerup', () => dragEnd(true));
+document.addEventListener('pointercancel', () => dragEnd(false));
+document.addEventListener('touchmove', e => { if (drag?.on) e.preventDefault(); }, { passive: false });
+document.addEventListener('contextmenu', e => { if (drag) e.preventDefault(); });
+document.addEventListener('click', e => { if (Date.now() < noClickUntil) { e.preventDefault(); e.stopPropagation(); } }, true);
 
 // ---------- tareas y referencias ----------
 function taskTable(items) {
@@ -647,7 +773,7 @@ function taskTable(items) {
 }
 const viewTasks = () => head('Mi trabajo', 'Tareas del equipo y plazos.', '<button class="primary" data-act="modal" data-type="task">+ Nueva tarea</button>') + taskTable(byBrand(state.tasks));
 function refCards(refs) {
-  return `<div class="ref-grid">${refs.map(r => `<article class="brand-card">${r.image_url ? `<img class="ref-image" src="${esc(safeUrl(r.image_url))}" loading="lazy" referrerpolicy="no-referrer" alt="Referencia ${esc(r.title)}">` : ''}<strong>${esc(r.title)}</strong><p class="subtle" style="font-size:13px">${esc(r.description || r.notes || '')}</p><div class="chips">${pill(nameBrand(r.brand_id))}${pill(lbl(r.content_type))}${pill(r.platform || 'Otros')}</div>${r.reference_url ? `<p><a target="_blank" rel="noopener noreferrer" href="${esc(safeUrl(r.reference_url))}">Ver referencia ↗</a></p>` : ''}${isAdmin() ? `<div class="actions card-actions"><button class="secondary" data-act="modal" data-type="reference" data-id="${esc(r.id)}">Editar</button><button class="muted-btn danger" data-act="delete-ref" data-id="${esc(r.id)}">Eliminar</button></div>` : ''}</article>`).join('') || empty('Sin referencias guardadas.')}</div>`;
+  return `<div class="ref-grid">${refs.map(r => `<article class="brand-card">${r.image_url ? `<img class="ref-image" src="${esc(safeUrl(r.image_url))}" loading="lazy" referrerpolicy="no-referrer" alt="Referencia ${esc(r.title)}">` : ''}<strong>${esc(r.title)}</strong><p class="subtle" style="font-size:13px">${esc(r.description || r.notes || '')}</p><div class="chips">${pill(nameBrand(r.brand_id))}${pill(lbl(r.content_type))}${pill(r.platform || 'Otros')}${isAdmin() && state.content.some(c => c.reference_id === r.id) ? pill('En calendario', 'ok') : ''}</div>${r.reference_url ? `<p><a target="_blank" rel="noopener noreferrer" href="${esc(safeUrl(r.reference_url))}">Ver referencia ↗</a></p>` : ''}${isAdmin() ? `<div class="actions card-actions"><button class="primary" data-act="ref-plan" data-id="${esc(r.id)}">→ Calendario</button><button class="secondary" data-act="modal" data-type="reference" data-id="${esc(r.id)}">Editar</button><button class="muted-btn danger" data-act="delete-ref" data-id="${esc(r.id)}">Eliminar</button></div>` : ''}</article>`).join('') || empty('Sin referencias guardadas.')}</div>`;
 }
 const viewReferences = () => head('Biblioteca de inspiración', 'Referencias visuales por marca.', '<button class="primary" data-act="modal" data-type="reference">+ Guardar referencia</button>') + refCards(byBrand(state.refs));
 
@@ -833,7 +959,7 @@ function openEntity(type, id, clientDefault) {
       body = brandSel(x.brand_id) + fld('title', 'Título', x.title, 'text', { req: 1 }) + sel('content_type', 'Formato', opt(['reel', 'story', 'carousel', 'post', 'video', 'other']), x.content_type) + fld('platform', 'Plataforma (Instagram, Pinterest…)', x.platform)
         + fld('reference_url', 'Enlace de referencia', x.reference_url, 'url', { full: 1 }) + fld('image_url', 'URL de la imagen (opcional)', x.image_url, 'url', { full: 1 }) + fileFld('image_file', 'O sube una imagen de referencia') + area('description', 'Descripción', x.description) + area('notes', 'Notas', x.notes); break;
     case 'content': x = state.content.find(v => v.id === id) || {}; title = id ? 'Editar publicación' : 'Nueva publicación'; table = 'content_items';
-      body = brandSel(x.brand_id) + fld('title', 'Título', x.title, 'text', { req: 1 }) + area('caption', 'Copy (texto de la publicación)', x.caption)
+      body = (x.reference_id && refById(x.reference_id) ? refBox(refById(x.reference_id)) : '') + brandSel(x.brand_id) + fld('title', 'Título', x.title, 'text', { req: 1 }) + area('caption', 'Copy (texto de la publicación)', x.caption)
         + sel('content_type', 'Formato', opt(['post', 'reel', 'story', 'carousel', 'video', 'other']), x.content_type) + sel('platform', 'Plataforma', opt(['instagram', 'facebook', 'tiktok', 'linkedin', 'pinterest', 'other']), x.platform)
         + sel('status', 'Estado', opt(STATUSES), x.status || 'idea') + fld('scheduled_at', 'Fecha y hora de publicación', x.scheduled_at ? localISO(new Date(x.scheduled_at)) + 'T' + new Date(x.scheduled_at).toTimeString().slice(0, 5) : '', 'datetime-local')
         + fld('media_url', 'Imagen / pieza (URL)', x.media_url, 'url', { full: 1 }) + fileFld('media_file', 'O sube la pieza (PNG, JPG o WebP · máx. 5 MB)'); break;
@@ -1118,6 +1244,13 @@ const ACTIONS = {
     const a = state.approvals.find(x => x.content_id === id && x.status === 'pending') || state.approvals.find(x => x.content_id === id);
     if (a) openReview(a.id); else { const post = state.content.find(x => x.id === id); if (post) openModal({ title: post.title, eyebrow: nameBrand(post.brand_id), body: `<p class="subtle">${esc(lbl(post.platform))} · ${sPill(post.status)}${post.scheduled_at ? ' · ' + esc(fmtDateTime(post.scheduled_at)) : ''}</p>${post.media_url ? `<img class="review-media" src="${esc(safeUrl(post.media_url))}" alt="" referrerpolicy="no-referrer">` : ''}<div class="approval-preview"><p>${esc(post.caption || 'Sin texto.')}</p></div><div class="modal-actions"><span class="grow"></span><button class="primary" data-act="close-modal">Cerrar</button></div>` }); }
   },
+  'cal-day': el => {
+    const d = el.dataset.date, has = byBrand(state.content).some(x => x.scheduled_at && localDay(x.scheduled_at) === d);
+    if (has && matchMedia('(max-width:860px)').matches) openDay(d); else openPlanner({ date: d });
+  },
+  'cal-more': el => openDay(el.dataset.date),
+  'cal-add': el => openPlanner({ date: el.dataset.date || '' }),
+  'ref-plan': el => openPlanner({ refId: el.dataset.id }),
   month: el => { const d = Number(el.dataset.id); state.month = d === 0 ? new Date() : new Date(state.month.getFullYear(), state.month.getMonth() + d, 1); render({ keepScroll: true }); },
   'content-view': el => { state.contentView = el.dataset.id; render({ keepScroll: true }); },
   'metric-platform': el => { state.metricPlatform = el.dataset.id; render({ keepScroll: true }); },

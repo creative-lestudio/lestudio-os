@@ -1,8 +1,8 @@
-// LE STUDIO Social OS — service worker v2.6.1
+// LE STUDIO Social OS — service worker v2.7.0
 // Estrategia: red primero para todo lo del propio sitio (así cada despliegue llega al instante)
 // y caché solo como respaldo sin conexión. Nunca se cachea Supabase ni nada de otro origen.
-const CACHE = 'ls-social-os-v2.6.1';
-const SHELL = ['/', '/index.html', '/styles.css?v=261', '/app.js?v=261', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/logo-le-studio.png', '/logo-le-studio-white.png'];
+const CACHE = 'ls-social-os-v2.7.0';
+const SHELL = ['/', '/index.html', '/styles.css?v=270', '/app.js?v=270', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/logo-le-studio.png', '/logo-le-studio-white.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => { })))).then(() => self.skipWaiting()));
