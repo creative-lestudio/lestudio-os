@@ -14,8 +14,13 @@ Objetivo a medio plazo: convertirlo en MVP vendible a otras agencias de redes so
 
 ## Estado (v2.6.1)
 Hecho: navegación tipo app móvil/escritorio, tema oscuro, buscador Cmd+K, enlaces de aprobación sin contraseña (sql/05), avisos por email (sql/06 + supabase/functions/notify-outbox, pendiente de desplegar con Resend), borrar publicaciones/tareas (sql/07), plan/facturación/métricas, historial de actividad.
-SQL ya ejecutados por el dueño: REPARAR-SUPABASE (v2.5.1), 04-arreglo-rapido (media_url). Pendiente confirmar: 05, 06, 07.
-Pendiente: pasar sql/00-diagnostico.sql y revisar su resultado ANTES de sql/01-migracion-v2.5.sql (oculta importes internos a clientes; seguridad). Verificar que close_plan_period y decide_approval comprueben rol.
+SQL ya ejecutados por el dueño: REPARAR-SUPABASE (v2.5.1), 04-arreglo-rapido (media_url), 05 (enlaces de aprobación).
+Diagnóstico real (sql/00, 13-oct-2026, vía conector Supabase):
+- close_plan_period y decide_approval SÍ comprueban rol (can_manage_brand / has_brand_access o is_org_admin). Resuelto.
+- Pendiente aplicar: 01 (seguridad + historial; ensayo con rollback OK, 4/4 valores copiados), 06 (avisos email; Edge Function notify-outbox sin desplegar), 07 (falta solo el permiso de borrar TAREAS; borrar publicaciones ya existe).
+- Después del 01 y de comprobar la web: 02 (borra la columna allocation).
+- Advisor: activar "Leaked password protection" en Auth; varias funciones SECURITY DEFINER ejecutables por anon (revisar revocar EXECUTE).
+- Las escrituras por el conector (apply_migration) dieron timeout de 60 s; si pasa, ejecutar los SQL a mano en el SQL Editor.
 
 ## Hoja de ruta acordada (el dueño decide sí/no)
 Siguientes: roles de equipo, alta de agencia + marca blanca, informe mensual PDF, plantillas/parrilla mensual, facturas recurrentes. Más adelante: Stripe, métricas Meta API, comentarios sobre imagen, calendario arrastrable, aprobación tipo swipe.
